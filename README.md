@@ -231,7 +231,7 @@ python eval.py --data_path test --weights /path/to/best_model.pth \
 
 The final trained checkpoint is publicly available for download:
 
-**Download link:** `[ADD YOUR GOOGLE DRIVE OR HUGGINGFACE LINK HERE]`
+**Download link:** `https://drive.google.com/file/d/1HQu-uDAlZcDOt66lWojBpBkLrr9R2CMz/view?usp=sharing`
 
 ```bash
 # Download with gdown (Google Drive)
