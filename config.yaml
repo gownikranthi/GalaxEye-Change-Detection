@@ -1,0 +1,96 @@
+# ================================================================
+# GalaxEye Space — Binary Change Detection
+# Configuration File — All Hyperparameters
+# ================================================================
+
+# ── Dataset ──────────────────────────────────────────────────────
+dataset:
+  name: "doron333/change-detection-dataset"   # HuggingFace dataset ID
+  image_size: 256                              # Patch size (cropped from 1024x1024)
+  num_workers: 2                               # DataLoader workers
+  nodata_threshold: 10                         # SAR pixel value below = nodata
+
+# ── Model ────────────────────────────────────────────────────────
+model:
+  architecture: "Unet"                         # segmentation-models-pytorch arch
+  backbone: "resnet34"                         # Encoder backbone
+  in_channels: 4                               # EO(3ch) + SAR(1ch) = 4
+  num_classes: 1                               # Binary segmentation
+  pretrained: "imagenet"                       # Encoder pretrained weights
+  activation: null                             # Raw logits (sigmoid applied in loss)
+
+# ── Loss Function ────────────────────────────────────────────────
+loss:
+  bce_weight: 0.5                              # Weight for BCE component
+  dice_weight: 0.5                             # Weight for Dice component
+  pos_weight: 10.0                             # BCE positive class weight
+                                               # (handles ~7% change pixel imbalance)
+
+# ── Training ─────────────────────────────────────────────────────
+training:
+  epochs: 30
+  batch_size: 8
+  seed: 42                                     # Random seed for reproducibility
+  device: "cuda"                               # "cuda" or "cpu"
+
+# ── Optimizer ────────────────────────────────────────────────────
+optimizer:
+  name: "AdamW"
+  lr: 0.0001                                   # 1e-4
+  weight_decay: 0.0001                         # 1e-4
+
+# ── Scheduler ────────────────────────────────────────────────────
+scheduler:
+  name: "CosineAnnealingLR"
+  T_max: 30                                    # Same as epochs
+  eta_min: 0.000001                            # 1e-6 minimum LR
+
+# ── Augmentations (Training only) ────────────────────────────────
+augmentations:
+  train:
+    - RandomCrop:
+        height: 256
+        width: 256
+    - HorizontalFlip:
+        p: 0.5
+    - VerticalFlip:
+        p: 0.5
+    - RandomRotate90:
+        p: 0.5
+    - RandomBrightnessContrast:
+        p: 0.3
+    - GaussianBlur:
+        p: 0.2
+    - Normalize:
+        mean: [0.485, 0.456, 0.406, 0.5]      # RGB channels + SAR channel
+        std:  [0.229, 0.224, 0.225, 0.5]
+  val_test:
+    - CenterCrop:
+        height: 256
+        width: 256
+    - Normalize:
+        mean: [0.485, 0.456, 0.406, 0.5]
+        std:  [0.229, 0.224, 0.225, 0.5]
+
+# ── Evaluation ───────────────────────────────────────────────────
+evaluation:
+  threshold: 0.85                              # Decision threshold
+                                               # (calibrated on validation set,
+                                               #  sweeping 0.10 to 0.90)
+  mask_nodata: true                            # Exclude swath edges from metrics
+  metrics:                                     # All computed for change class (label=1)
+    - iou
+    - precision
+    - recall
+    - f1
+
+# ── Paths ────────────────────────────────────────────────────────
+paths:
+  save_dir: "./checkpoints"                    # Where best model is saved
+  output_dir: "./outputs"                      # Where plots/visualisations are saved
+  checkpoint_name: "best_model.pth"           # Filename of saved checkpoint
+
+# ── Checkpoint Selection ─────────────────────────────────────────
+checkpoint:
+  monitor: "val_f1"                            # Metric to monitor for best model
+  mode: "max"                                  # Save when metric increases
